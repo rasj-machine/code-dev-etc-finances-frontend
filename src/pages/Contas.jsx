@@ -200,18 +200,18 @@ export default function Contas() {
   const filteredFlows = useMemo(() =>
     transferFlows.filter(f =>
       (!tfOrigin || String(f.from) === tfOrigin) &&
-      (!tfDest   || String(f.to)   === tfDest)
+      (!tfDest || String(f.to) === tfDest)
     ), [transferFlows, tfOrigin, tfDest])
 
   const tfTotalAportes = useMemo(() =>
     transactions.filter(t => t.type === 'transfer_in' && (!tfDest || String(t.account_id) === tfDest) && (!tfOrigin || String(t.destination_account_id) === tfOrigin))
       .reduce((s, t) => s + Math.abs(t.raw_amount || t.amount || 0), 0)
-  , [transactions, tfOrigin, tfDest])
+    , [transactions, tfOrigin, tfDest])
 
   const tfTotalRetiradas = useMemo(() =>
     transactions.filter(t => t.type === 'transfer_out' && (!tfOrigin || String(t.account_id) === tfOrigin) && (!tfDest || String(t.destination_account_id) === tfDest))
       .reduce((s, t) => s + Math.abs(t.raw_amount || t.amount || 0), 0)
-  , [transactions, tfOrigin, tfDest])
+    , [transactions, tfOrigin, tfDest])
 
   return (
     <div className="space-y-6 animate-fade-in" id="accounts">
@@ -470,15 +470,15 @@ export default function Contas() {
 
 
 
-                      {Math.abs(a.balance - (stats.income - stats.expense)) > 0.01 && (
+                      {Math.abs((a.balance + stats.transfers) - (stats.income - stats.expense + stats.transfers)) > 0.01 && (
                         <div className="p-2 border border-amber-500/30 bg-amber-500/5 rounded-lg flex items-center justify-between gap-3 mb-2">
                           <div className="flex items-center gap-2 text-amber-500">
                             <AlertTriangle size={12} />
                             <span className="text-[10px] font-medium leading-none">
                               Saldo divergente das transações.<br /><br />
-                              Na conta: R$ {a.balance.toFixed(2)}<br />
-                              Transações: R$ {(stats.income - stats.expense + stats.transfers).toFixed(2)}<br /><br />
-                              Diferença: <u><strong>R$ {(a.balance - (stats.income - stats.expense)).toFixed(2)}</strong></u>
+                              Na conta: R$ {((a.balance + stats.transfers) / 100).toFixed(2)}<br />
+                              Transações: R$ {((stats.income - stats.expense + stats.transfers) / 100).toFixed(2)}<br /><br />
+                              Diferença: <u><strong>R$ {(((a.balance + stats.transfers) - (stats.income - stats.expense + stats.transfers)) / 100).toFixed(2)}</strong></u>
                             </span>
                           </div>
                           <button onClick={() => syncAccount(a.id)}
