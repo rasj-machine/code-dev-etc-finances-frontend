@@ -25,6 +25,7 @@ import AiChat from "@/pages/AiChat"
 import AuthShell from "@/pages/AuthShell"
 import OrgSetupPage from "@/pages/OrgSetupPage"
 import ProfilePage from "@/pages/ProfilePage"
+import ProcessarArquivos from "@/pages/ProcessarArquivos"
 import { AuthProvider, useAuth } from "@/context/AuthContext"
 import OrgUserInfo from "@/components/OrgUserInfo"
 import { PrivacyProvider, usePrivacy } from "@/context/PrivacyContext"
@@ -219,6 +220,7 @@ function AppInner() {
                 <Route path="/automacao" element={<AutomacaoPadroes />} />
                 <Route path="/ai" element={<AiChat />} />
                 <Route path="/perfil" element={<ProfilePage />} />
+                <Route path="/processar-arquivos" element={<ProcessarArquivos />} />
               </Routes>
             </main>
           </div>

@@ -33,6 +33,7 @@ import {
   PiggyBank,
   FileText,
   GitMerge,
+  FolderOpen,
 } from "lucide-react"
 
 function DbSelector() {
@@ -215,6 +216,7 @@ export default function Sidebar() {
         <div className="space-y-0.5">
           <NavItem to="/" icon={Home} label="Início" end />
           <NavItem to="/tutorial-extrato" icon={BookOpen} label="Tutorial Extrato" />
+          <NavItem to="/processar-arquivos" icon={FolderOpen} label="Processar Arquivos" />
         </div>
 
         <div className="text-[10px] border-border  border-t p-1 pt-5 uppercase text-primary">Banco de dados</div>

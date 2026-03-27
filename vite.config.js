@@ -49,7 +49,8 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:5001',
+        // VITE_API_HOST is set to 'backend' when running inside Docker Compose
+        target: `http://${globalThis.process?.env?.VITE_API_HOST ?? 'localhost'}:5001`,
         changeOrigin: true,
       },
     },
