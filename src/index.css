@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142 76% 45%;
+    --success-foreground: 210 40% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222.2 84% 4.9%;
+    --ring: 199 89% 48%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary rounded-full;
+  }
+}
+
+/* ── Privacy mode: blur all monetary values ────────────────────────── */
+.privacy-on .amount-value {
+  color: transparent !important;
+  background-color: hsl(var(--muted-foreground) / 0.55);
+  border-radius: 3px;
+  user-select: none;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.privacy-on .amount-value * {
+  color: transparent !important;
+}
+
+/* Recharts numeric labels */
+.privacy-on .recharts-text,
+.privacy-on .recharts-cartesian-axis-tick-value {
+  filter: blur(6px);
+  transition: filter 0.2s;
+}
+
+.privacy-on .recharts-responsive-container {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+.privacy-on .conciliacao-table {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+.privacy-on .invisble-privacy {
+  visibility: hidden !important;
+}
+
+.same-day {
+  &::after {
+    content: "";
+    position: absolute;
+    top: 40px;
+    left: calc(50% - 5px);
+    width: 2px;
+    height: 60%;
+    z-index: 2;
+    background-color: hsl(var(--border) / 0.8);
+    transform-origin: top left;
+  }
+
+}
+
+.timeline-day {
+  margin-left: 25px;
+  margin-top: -20px;
+  z-index: 3;
+
+  >div::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    width: 2px;
+    height: 140%;
+    z-index: 2;
+    background-color: hsl(var(--border) / 0.8);
+    transform-origin: top left;
+  }
+
+  >div::before {
+    content: "";
+    position: absolute;
+    top: -100%;
+    left: 50%;
+    width: 2px;
+    height: 100%;
+    z-index: 2;
+    background-color: hsl(var(--border) / 0.8);
+    transform-origin: top left;
+  }
+}
