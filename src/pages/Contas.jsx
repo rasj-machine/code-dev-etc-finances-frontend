@@ -3,7 +3,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle, Input, Select, Badge,
 import { Dialog, FormField } from "@/components/Dialog"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { useApi } from "@/lib/useApi"
-import { ArrowLeft, Plus, Pencil, Trash2, Building2, Bitcoin, Wallet, TrendingUp, TrendingDown, AlertTriangle, ArrowUp, ArrowDown, ArrowRight, Banknote, ShieldCheck, CheckCircle2, XCircle } from "lucide-react"
+import { ArrowLeft, Plus, Pencil, Trash2, Building2, Bitcoin, Wallet, TrendingUp, TrendingDown, AlertTriangle, ArrowUp, ArrowDown, ArrowRight, Banknote, ShieldCheck, CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react"
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, AreaChart, Area,
@@ -57,6 +57,7 @@ export default function Contas() {
   const [tfDest, setTfDest] = useState("")
   const [integrityResults, setIntegrityResults] = useState(null)
   const [verifying, setVerifying] = useState(false)
+  const [expandedAccounts, setExpandedAccounts] = useState(new Set())
 
   const load = async () => {
     const [accs, txns] = await Promise.all([
@@ -111,7 +112,12 @@ export default function Contas() {
   }
 
   // ── Financial calculations (unchanged) ───────────────────────
-  const totalBalance = useMemo(() => accounts.reduce((s, a) => s + a.balance, 0), [accounts])
+  const totalBalance = useMemo(() => accounts.reduce((s, a) => s + (a.total_balance || a.balance), 0), [accounts])
+  const liquidAvailable = useMemo(() => {
+    return accounts
+      .filter(a => a.type === 'bank')
+      .reduce((s, a) => s + (a.total_balance || a.balance), 0)
+  }, [accounts])
   const [accountMapData, setAccountMap] = useState({})
 
   const { totalIncome, totalExpense, totalTransferSent, perAccount, monthlyData } = useMemo(() => {
@@ -233,6 +239,8 @@ export default function Contas() {
           <h1 className="text-2xl font-bold">Contas &amp; Carteiras</h1>
           <p className="text-muted-foreground text-sm mt-1 flex items-center gap-2">
             Saldo total: <span className="text-foreground font-semibold amount-value">{formatCurrency(totalBalance)}</span>
+            <span className="mx-1 opacity-20">|</span>
+            Líquido (Bancos): <span className="text-success font-semibold amount-value">{formatCurrency(liquidAvailable)}</span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -255,7 +263,7 @@ export default function Contas() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-4 pb-5">
+      <div className="grid grid-cols-5 gap-4 pb-5">
         <Card><CardContent className="pt-5 pb-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Total Receitas (todo período)</p>
           <p className="text-2xl font-bold text-success amount-value">{formatCurrency(totalIncome)}</p>
@@ -277,6 +285,13 @@ export default function Contas() {
           <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Transferências</p>
           <p className="text-2xl font-bold text-primary amount-value">{formatCurrency(totalTransferSent)}</p>
           <p className="text-xs text-muted-foreground mt-1">Entre minhas contas</p>
+        </CardContent></Card>
+        <Card className="border-primary/20 bg-primary/5 shadow-md shadow-primary/5 scale-105 transform origin-top"><CardContent className="pt-5 pb-4">
+          <p className="text-xs text-primary uppercase tracking-wide font-bold mb-1 flex items-center gap-2">
+            <Banknote size={14} /> Líquido Disponível
+          </p>
+          <p className="text-2xl font-black text-primary amount-value">{formatCurrency(liquidAvailable)}</p>
+          <p className="text-xs text-muted-foreground mt-1">Soma apenas de contas "Banco"</p>
         </CardContent></Card>
       </div>
 
@@ -317,11 +332,31 @@ export default function Contas() {
                     </p>
                   </div>
 
-                  <p className="text-2xl font-bold text-foreground amount-value">{formatCurrency(a.total_balance || (a.balance + stats.transfers))}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">NET {a.currency} (Saldo + Transferências)</p>
+                  <div className="flex items-center justify-between mt-4">
+                    <div>
+                      <p className="text-2xl font-bold text-foreground amount-value">{formatCurrency(a.total_balance || (a.balance + stats.transfers))}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">NET {a.currency} (Saldo + Transferências)</p>
+                    </div>
+                    {stats.count > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-muted-foreground hover:text-primary gap-1"
+                        onClick={() => {
+                          const next = new Set(expandedAccounts)
+                          if (next.has(a.id)) next.delete(a.id)
+                          else next.add(a.id)
+                          setExpandedAccounts(next)
+                        }}
+                      >
+                        {expandedAccounts.has(a.id) ? <EyeOff size={14} /> : <Eye size={14} />}
+                        {expandedAccounts.has(a.id) ? "Ocultar" : "Detalhes"}
+                      </Button>
+                    )}
+                  </div>
 
-                  {stats.count > 0 && (
-                    <div className="mt-3 pt-3 border-t border-border/60">
+                  {stats.count > 0 && expandedAccounts.has(a.id) && (
+                    <div className="mt-3 pt-3 border-t border-border/60 animate-in fade-in slide-in-from-top-2">
                       <div className="grid grid-cols-2 gap-x-3 gap-y-1 mb-2">
                         <div>
                           <p className="text-[10px] uppercase text-muted-foreground font-medium">Receitas (in)</p>

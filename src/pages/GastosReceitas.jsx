@@ -51,8 +51,8 @@ const MiniTooltip = ({ active, payload, label }) => {
 }
 
 // ── Single category card ──────────────────────────────────────────────────
-function CategoryCard({ cat, txns, type }) {
-  const [tab, setTab] = useState("Gráficos")
+function CategoryCard({ cat, txns, type, initialTab }) {
+  const [tab, setTab] = useState(initialTab || "Gráficos")
   const color = catColor(cat)
 
   // Last transaction
@@ -188,6 +188,7 @@ export default function GastosReceitas() {
   const [transactions, setTransactions] = useState([])
   const [view, setView] = useState("expense") // expense | income | all
   const [period, setPeriod] = useState("all")  // all | 30 | 90 | 365
+  const [globalTab, setGlobalTab] = useState(null)
 
   useEffect(() => { fetch("/api/transactions").then(r => r.ok ? r.json() : []).then(d => setTransactions(Array.isArray(d) ? d : [])) }, [])
 
@@ -297,6 +298,14 @@ export default function GastosReceitas() {
           </button>
         ))}
         <span className="ml-auto text-xs text-muted-foreground">{cats.length} categorias</span>
+        <div className="flex gap-1 bg-card border border-border rounded-lg p-1 ml-2">
+          {TABS.map(t => (
+            <button key={t} onClick={() => setGlobalTab(t)}
+              className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${globalTab === t ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}>
+              {t}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Category cards grid */}
@@ -308,12 +317,12 @@ export default function GastosReceitas() {
           const cards = []
           if ((view === "expense" || view === "all") && expTxns.length > 0) {
             cards.push(
-              <CategoryCard key={`${cat}-exp`} cat={cat} txns={expTxns} type="expense"/>
+              <CategoryCard key={`${cat}-exp-${globalTab}`} cat={cat} txns={expTxns} type="expense" initialTab={globalTab} />
             )
           }
           if ((view === "income" || view === "all") && incTxns.length > 0) {
             cards.push(
-              <CategoryCard key={`${cat}-inc`} cat={cat} txns={incTxns} type="income"/>
+              <CategoryCard key={`${cat}-inc-${globalTab}`} cat={cat} txns={incTxns} type="income" initialTab={globalTab} />
             )
           }
           return cards
