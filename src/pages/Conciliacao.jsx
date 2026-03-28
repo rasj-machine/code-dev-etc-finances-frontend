@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button, Card, CardContent, Input, Badge, MultiSelect, MoneyInput } from "@/components/ui"
 import { Dialog, FormField } from "@/components/Dialog"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { CheckCircle2, AlertTriangle, XCircle, Save, ChevronLeft, ChevronRight, Calculator, CheckSquare, Square, Zap, Filter, Building2, MessageSquare } from "lucide-react"
+import { CheckCircle2, AlertTriangle, XCircle, Save, ChevronLeft, ChevronRight, Calculator, CheckSquare, Square, Zap, Filter, Building2, MessageSquare, Wallet, Bitcoin, Banknote } from "lucide-react"
 
 import { usePrivacy } from "@/context/PrivacyContext"
 
@@ -91,6 +91,33 @@ export default function Conciliacao() {
       body: JSON.stringify(payload)
     })
     setSelectedKeys(new Set()); setBatchNote(""); setShowBatchModal(false); loadData()
+  }
+
+  const autoAdjustWallet = async (row) => {
+    const diff = row.external_balance - row.platform_balance
+    if (Math.abs(diff) < 0.01) return
+
+    const amount = Math.abs(diff)
+    const type = diff > 0 ? "income" : "expense"
+
+    const txn = {
+      account_id: row.account_id,
+      date: row.date,
+      description: "Flutuação de Investimento",
+      category: "Rendimento Investimento",
+      amount: amount,
+      raw_amount: diff,
+      type: type,
+      metadata: { source: "reconciliation_auto_adjust" }
+    }
+
+    await fetch("/api/transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(txn)
+    })
+
+    loadData()
   }
 
   const toggleSelect = (date, accId) => {
@@ -219,7 +246,14 @@ export default function Conciliacao() {
                         {row.notes && <span className="text-[10px] text-muted-foreground italic flex items-center gap-1 mt-0.5"><MessageSquare size={8} /> {row.notes}</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-2"><div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground"><Building2 size={12} />{row.account_name}</div></td>
+                    <td className="px-4 py-2">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground capitalize">
+                        {row.account_type === 'bank' && <Building2 size={12} className="text-blue-400" />}
+                        {row.account_type === 'wallet' && <Wallet size={12} className="text-orange-400" />}
+                        {row.account_type === 'crypto' && <Bitcoin size={12} className="text-yellow-400" />}
+                        {row.account_name}
+                      </div>
+                    </td>
                     <td className="px-4 py-2 text-right tabular-nums font-medium amount-value">{formatCurrency(row.platform_balance)}</td>
                     <td className="px-4 py-2 text-right tabular-nums" onClick={(e) => { e.stopPropagation(); !isFuture && (!editing || editing.date !== row.date || editing.accId !== row.account_id) && setEditing({ date: row.date, accId: row.account_id, value: row.external_balance || 0, notes: row.notes || "" }) }}>
                       {editing?.date === row.date && editing?.accId === row.account_id ? (
@@ -252,10 +286,23 @@ export default function Conciliacao() {
                       {row.external_balance !== null ? formatCurrency(diff) : ""}
                     </td>
                     <td className="px-4 py-2 text-center">
-                      {isMatch && <Badge variant="success" className="gap-1 bg-success/10 text-success"><CheckCircle2 size={10} /> Conciliado</Badge>}
-                      {isError && <Badge variant="destructive" className="gap-1 bg-destructive/10 text-destructive"><XCircle size={10} /> Divergente</Badge>}
-                      {isMissing && <Badge variant="warning" className="gap-1 bg-yellow-500/10 text-yellow-600"><AlertTriangle size={10} /> Pendente</Badge>}
-                      {isFuture && <Badge variant="secondary" className="gap-1 opacity-50"><Filter size={10} /> Futura</Badge>}
+                      <div className="flex flex-col items-center gap-1">
+                        {isMatch && <Badge variant="success" className="gap-1 bg-success/10 text-success"><CheckCircle2 size={10} /> Conciliado</Badge>}
+                        {isError && <Badge variant="destructive" className="gap-1 bg-destructive/10 text-destructive"><XCircle size={10} /> Divergente</Badge>}
+                        {isMissing && <Badge variant="warning" className="gap-1 bg-yellow-500/10 text-yellow-600"><AlertTriangle size={10} /> Pendente</Badge>}
+                        {isFuture && <Badge variant="secondary" className="gap-1 opacity-50"><Filter size={10} /> Futura</Badge>}
+
+                        {isError && (row.account_type === 'wallet' || row.account_type === 'crypto') && (
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            className="h-6 text-[9px] px-1.5 gap-1.5 border-primary/30 text-primary hover:bg-primary/5 shadow-none mt-1"
+                            onClick={(e) => { e.stopPropagation(); autoAdjustWallet(row) }}
+                          >
+                            <Zap size={10} className="fill-current" /> Ajustar Fluxo
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
