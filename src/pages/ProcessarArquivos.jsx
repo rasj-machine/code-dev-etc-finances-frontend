@@ -133,7 +133,98 @@ export default function ProcessarArquivos() {
 
   const [loading, setLoading] = useState(false)
   const [processing, setProcessing] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [results, setResults] = useState(null)
+  const [syncResult, setSyncResult] = useState(null)
+
+  // ── shortcuts ─────────────────────────────────────────────────────────────
+  const SHORTCUTS = [
+    {
+      label: "Nubank Rasj",
+      pattern: "NU_79868941_",
+      accountSearch: "Rasj",
+      bank: "nubank",
+      type: "debit",
+      icon: <FileText size={14} className="text-emerald-400" />
+    },
+    {
+      label: "Nubank Holding",
+      pattern: "NU_1251504794_",
+      accountSearch: "Holding",
+      bank: "nubank",
+      type: "debit",
+      icon: <FileText size={14} className="text-amber-400" />
+    },
+    {
+      label: "Nubank Rasj Extrato Cartao",
+      pattern: "Nubank_",
+      accountSearch: "Rasj",
+      bank: "nubank",
+      type: "credit",
+      icon: <FileText size={14} className="text-blue-400" />
+    }
+  ]
+
+  async function handleShortcut(s) {
+    const matchingFiles = files.filter(f =>
+      !f.already_processed && f.filename.includes(s.pattern)
+    )
+
+    if (matchingFiles.length === 0) {
+      alert(`Nenhum arquivo pendente encontrado para o padrão: ${s.pattern}`)
+      return
+    }
+
+    const acc = accounts.find(a =>
+      a.name.toLowerCase().includes(s.accountSearch.toLowerCase())
+    )
+
+    if (!acc) {
+      alert(`Conta de destino não encontrada: "${s.accountSearch}". Por favor, selecione-a manualmente.`)
+      // Still set the others, let user choose account
+      setBank(s.bank)
+      setImportType(s.type)
+      const fnames = new Set(matchingFiles.map(f => f.filename))
+      setSelected(fnames)
+      return
+    }
+
+    // Pre-select everything
+    setBank(s.bank)
+    setAccountId(String(acc.id))
+    setImportType(s.type)
+    const fnames = new Set(matchingFiles.map(f => f.filename))
+    setSelected(fnames)
+
+    const confirmMsg = `Encontrados ${matchingFiles.length} arquivos para "${s.label}".\n\n` +
+      `Conta: ${acc.name}\n` +
+      `Modelo: ${s.bank}\n` +
+      `Tipo: ${s.type === 'debit' ? 'Débito' : 'Crédito'}\n\n` +
+      `Deseja prosseguir com a importação agora?`
+
+    if (window.confirm(confirmMsg)) {
+      // Trigger processing after a small timeout to let state update
+      setTimeout(async () => {
+        setProcessing(true)
+        setResults(null)
+        try {
+          const data = await api.post("/api/files/process", {
+            files: [...fnames],
+            bank: s.bank,
+            account_id: Number(acc.id),
+            type: s.type,
+          })
+          setResults(data.results ?? [])
+          setSelected(new Set())
+          fetchAll()
+        } catch (e) {
+          setResults([{ filename: "—", status: "error", error: String(e) }])
+        } finally {
+          setProcessing(false)
+        }
+      }, 100)
+    }
+  }
 
   // ── fetch data ────────────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
@@ -210,6 +301,24 @@ export default function ProcessarArquivos() {
     }
   }
 
+  async function handleSync() {
+    setSyncing(true)
+    setSyncResult(null)
+    try {
+      const resp = await api.post("/api/files/sync", {})
+      if (resp.error) {
+        setSyncResult({ error: resp.error })
+      } else {
+        setSyncResult({ output: resp.output })
+      }
+      fetchAll() // Reload files list after sync
+    } catch (e) {
+      setSyncResult({ error: String(e) })
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   const pendingCount = files.filter(f => !f.already_processed).length
   const processedCount = files.filter(f => f.already_processed).length
   const selectedArr = [...selected]
@@ -228,15 +337,44 @@ export default function ProcessarArquivos() {
             Importe extratos <code className="text-xs bg-muted px-1 py-0.5 rounded">.csv.enc</code> criptografados diretamente da pasta <code className="text-xs bg-muted px-1 py-0.5 rounded">files/</code>
           </p>
         </div>
-        <button
-          onClick={fetchAll}
-          disabled={loading}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border text-sm hover:bg-accent transition-colors disabled:opacity-50"
-        >
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-          Atualizar
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-sm hover:bg-primary/20 transition-colors disabled:opacity-50"
+          >
+            {syncing ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
+            Syncar Arquivos
+          </button>
+          <button
+            onClick={fetchAll}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border text-sm hover:bg-accent transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            Atualizar
+          </button>
+        </div>
       </div>
+
+      {/* ── Sync Result Warning/Info ── */}
+      {syncResult && (
+        <div className={`p-4 rounded-2xl border animate-in slide-in-from-top-2 duration-300 ${syncResult.error ? 'bg-red-500/10 border-red-500/20 text-red-200' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200'}`}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 font-bold text-sm">
+              {syncResult.error ? <XCircle size={16} /> : <CheckCircle2 size={16} />}
+              {syncResult.error ? 'Falha na Sincronização' : 'Sincronização Concluída'}
+            </div>
+            <button onClick={() => setSyncResult(null)} className="text-xs opacity-60 hover:opacity-100 transition-opacity">Fechar</button>
+          </div>
+          {syncResult.error && <p className="text-xs">{syncResult.error}</p>}
+          {syncResult.output && (
+            <pre className="mt-2 p-3 rounded-lg bg-black/40 font-mono text-[10px] overflow-x-auto max-h-48 whitespace-pre">
+              {syncResult.output}
+            </pre>
+          )}
+        </div>
+      )}
 
       {/* ── Stats ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -256,6 +394,27 @@ export default function ProcessarArquivos() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* ── Quick Actions ── */}
+      <div className="space-y-2">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+          <Play size={12} className="text-primary" />
+          Atalhos de Importação
+        </h2>
+        <div className="flex items-center gap-2 flex-wrap">
+          {SHORTCUTS.map(s => (
+            <button
+              key={s.label}
+              onClick={() => handleShortcut(s)}
+              className="group flex items-center gap-2 px-3 py-2 rounded-xl bg-card border border-border hover:border-primary/50 hover:bg-accent/40 transition-all text-xs font-medium"
+            >
+              {s.icon}
+              {s.label}
+              <ChevronDown size={12} className="opacity-0 -translate-x-1 group-hover:opacity-60 group-hover:translate-x-0 transition-all" />
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
