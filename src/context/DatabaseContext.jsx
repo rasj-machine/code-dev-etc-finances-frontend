@@ -312,7 +312,7 @@ export function DatabaseProvider({ children }) {
 
   const value = {
     mode,
-    currentDb,
+    currentDb: currentDb || allDatabases.find(d => d.is_current) || null,
     databases: allDatabases,
     serverDatabases: databases, // Original list for internal use
     cloudConfigs,

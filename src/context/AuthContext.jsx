@@ -29,17 +29,27 @@ function installFetchInterceptor(getToken, getBaseUrl) {
   window.fetch = function (url, opts = {}) {
     const token = getToken()
     const baseUrl = getBaseUrl()
+    const pinToken = localStorage.getItem('pin_token')
     
     const isApi = typeof url === 'string' && (url.startsWith('/api/') || url.includes('/api/'))
     
     let finalUrl = url
     if (isApi) {
       finalUrl = normalizeUrl(baseUrl, url)
-      if (token) {
-        opts = { ...opts, headers: { ...opts.headers, Authorization: `Bearer ${token}` } }
-      }
+      const headers = { ...opts.headers }
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      if (pinToken) headers['X-Pin-Token'] = pinToken
+      opts = { ...opts, headers }
     }
-    return original(finalUrl, opts)
+    return original(finalUrl, opts).then(res => {
+      if (res.status === 401) {
+        res.clone().json().then(b => {
+          if (b?.code === 'PIN_REQUIRED') window.dispatchEvent(new CustomEvent('pin_required'))
+          else window.dispatchEvent(new CustomEvent('unauthorized'))
+        }).catch(() => window.dispatchEvent(new CustomEvent('unauthorized')))
+      }
+      return res
+    })
   }
 }
 

@@ -1,36 +1,4 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react"
-
-const originalFetch = window.fetch
-window.fetch = async (...args) => {
-  const token = localStorage.getItem('auth_token')
-  const pinToken = localStorage.getItem('pin_token')
-  if (!args[1]) args[1] = {}
-  if (!args[1].headers) args[1].headers = {}
-  if (args[1].headers instanceof Headers) {
-    if (token) args[1].headers.set('Authorization', `Bearer ${token}`)
-    if (pinToken) args[1].headers.set('X-Pin-Token', pinToken)
-  } else {
-    if (token) args[1].headers['Authorization'] = `Bearer ${token}`
-    if (pinToken) args[1].headers['X-Pin-Token'] = pinToken
-  }
-  const res = await originalFetch(...args)
-  if (res.status === 401) {
-    // Clone to read body without consuming the original response
-    res.clone().json().then(body => {
-      if (body?.code === 'PIN_REQUIRED') {
-        // PIN expired — show unlock screen WITHOUT destroying user session
-        window.dispatchEvent(new CustomEvent('pin_required'))
-      } else {
-        // Real session error — logout the user
-        window.dispatchEvent(new CustomEvent('unauthorized'))
-      }
-    }).catch(() => {
-      window.dispatchEvent(new CustomEvent('unauthorized'))
-    })
-  }
-  return res
-}
-
 const PrivacyContext = createContext(null)
 
 export function PrivacyProvider({ children }) {
@@ -58,7 +26,7 @@ export function PrivacyProvider({ children }) {
 
     const onAuthError = () => {
       setPinVerified(false)
-      localStorage.removeItem('auth_token')
+      localStorage.removeItem('finance_auth_token')
       setHidden(true)
     }
     const onPinRequired = () => {
