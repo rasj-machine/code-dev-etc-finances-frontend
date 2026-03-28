@@ -551,9 +551,10 @@ export default function Home() {
       alert('info', `"${db.name}" é uma config local. Conecte o servidor para selecioná-lo.`)
       return
     }
-    if (db.is_current) { navigate("/dashboard"); return }
+    if (db.is_current) { navigate("/dashboard"); location.reload(true); return }
     const ok = await selectDatabase(db.path)
-    if (ok) alert("success", `Banco "${db.name}" selecionado!`) && location.reload(true);
+    if (ok) alert("success", `Banco "${db.name}" selecionado!`);
+    location.reload(true);
   }
 
   const handleRemove = async (db) => {
@@ -645,7 +646,7 @@ export default function Home() {
               <RefreshCw size={13} /> Atualizar
             </Button>
             {currentDb && (
-              <Button size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs">
+              <Button size="sm" onClick={() => { navigate('/dashboard'); }} className="gap-1.5 text-xs">
                 Dashboard <ArrowRight size={13} />
               </Button>
             )}
@@ -684,21 +685,25 @@ export default function Home() {
       </div>
 
       {/* ── Active indicator ── */}
-      {currentDb && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl text-sm">
-          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span className="text-muted-foreground">Banco ativo:</span>
-          <span className="font-semibold text-primary flex items-center gap-1.5"><HardDrive size={13} />{currentDb.name}</span>
-          <Button size="sm" variant="ghost" className="ml-auto text-xs h-7 gap-1" onClick={() => navigate("/dashboard")}>
-            Abrir <ArrowRight size={11} />
-          </Button>
-        </div>
-      )}
+      {
+        currentDb && (
+          <div className="flex items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl text-sm">
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-muted-foreground">Banco ativo:</span>
+            <span className="font-semibold text-primary flex items-center gap-1.5"><HardDrive size={13} />{currentDb.name}</span>
+            <Button size="sm" variant="ghost" className="ml-auto text-xs h-7 gap-1" onClick={() => navigate("/dashboard")}>
+              Abrir <ArrowRight size={11} />
+            </Button>
+          </div>
+        )
+      }
 
       {/* ── Browser sync bar ── */}
-      {mode === MODES.BROWSER && allDbs.length > 0 && (
-        <SyncBar syncToDisk={syncToDisk} autoSaveEnabled={autoSaveEnabled} setAutoSave={setAutoSave} />
-      )}
+      {
+        mode === MODES.BROWSER && allDbs.length > 0 && (
+          <SyncBar syncToDisk={syncToDisk} autoSaveEnabled={autoSaveEnabled} setAutoSave={setAutoSave} />
+        )
+      }
 
       {/* ── DB List ── */}
       <div className="space-y-4">
@@ -737,12 +742,12 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredDbs.map((db, i) => (
               <DbCard
-                key={db.id || db.path || db.name || i}
+                key={db.id}
                 db={db}
                 mode={mode}
                 MODES={MODES}
                 onSelect={handleSelect}
-                onOpen={() => navigate("/dashboard")}
+                onOpen={() => { navigate("/dashboard") && location.reload(true); }}
                 onRemove={handleRemove}
                 hidden={hidden}
               />
@@ -792,14 +797,16 @@ export default function Home() {
       </div>
 
       {/* Add dialog */}
-      {showAddDialog && (
-        <AddDbDialog
-          onClose={() => setShowAddDialog(false)}
-          onAdd={handleAdd}
-          currentMode={mode}
-          MODES={MODES}
-        />
-      )}
-    </div>
+      {
+        showAddDialog && (
+          <AddDbDialog
+            onClose={() => setShowAddDialog(false)}
+            onAdd={handleAdd}
+            currentMode={mode}
+            MODES={MODES}
+          />
+        )
+      }
+    </div >
   )
 }

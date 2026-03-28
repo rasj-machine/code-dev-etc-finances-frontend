@@ -295,7 +295,7 @@ export function DatabaseProvider({ children }) {
   const allDatabases = [
     ...databases.map(d => ({ ...d, storageType: d.storageType || (mode === MODES.BROWSER ? 'local' : 'cloud'), type: d.type || (mode === MODES.BROWSER ? 'browser' : 'api') })),
     ...(mode === MODES.FLASK ? cloudConfigs
-      .filter(c => !databases.find(d => d.path === c.db_path || d.name === c.filename))
+      .filter(c => !databases.find(d => d.id && c.id && d.id === c.id || d.path === c.db_path || d.name === c.filename))
       .map(c => ({ ...c, path: c.db_path || c.filename })) : []),
     ...(mode === MODES.FLASK ? localConfigs.map(c => ({
       id: c.id,
@@ -308,7 +308,7 @@ export function DatabaseProvider({ children }) {
       is_current: false,
       size: 0,
     })) : []),
-  ]
+  ];
 
   const value = {
     mode,
