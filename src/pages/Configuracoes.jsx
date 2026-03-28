@@ -74,7 +74,7 @@ export default function Configuracoes() {
       load()
     } catch(err) {
       console.error(err)
-      alert("Erro ao processar auto-redação.")
+      alert("error", "Erro ao processar auto-redação.")
       setLoading(false)
     }
   }
@@ -87,11 +87,11 @@ export default function Configuracoes() {
     try {
       const res = await fetch("/api/redacted-texts/permanently-redact", { method: "POST" })
       const data = await res.json()
-      alert(data.message, "Sucesso")
+      alert("success", data.message, "Sucesso")
       load()
     } catch(err) {
       console.error(err)
-      alert("Erro ao processar redação permanente.")
+      alert("error", "Erro ao processar redação permanente.")
       setLoading(false)
     }
   }
@@ -223,7 +223,7 @@ export default function Configuracoes() {
                    </div>
                 </div>
                 <Button className="w-full gap-2" onClick={async () => {
-                   if (pinForm.new_pin && pinForm.new_pin.length !== 6) return alert("O novo PIN deve ter 6 dígitos.")
+                   if (pinForm.new_pin && pinForm.new_pin.length !== 6) return alert("error", "O novo PIN deve ter 6 dígitos.")
                    const res = await fetch("/api/auth/pin/set", {
                      method: "POST",
                      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem('auth_token')}` },
@@ -234,7 +234,7 @@ export default function Configuracoes() {
                      toast("PIN atualizado com sucesso!", "success")
                      setPinForm({ old_pin: "", new_pin: "" })
                    } else {
-                     alert(data.message)
+                     alert("error", data.message)
                    }
                 }}>
                    <KeyRound size={16} /> Definir / Redefinir PIN

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui"
 export function Dialog({ open, onClose, children, title, titleAction, className }) {
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed top-[-20px] left-0 right-0 bottom-0  z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className={cn(
         "relative z-10 w-full max-w-lg bg-card border border-border rounded-xl shadow-2xl animate-fade-in p-6 max-h-[95vh] flex flex-col",

@@ -4,7 +4,7 @@ import {
   ChevronDown, ChevronUp, Clock, Hash, Database, Upload,
   ShieldCheck, SkipForward, Loader2, Filter, RotateCcw, History,
 } from "lucide-react"
-
+import { useNotification } from "@/context/NotificationContext"
 // ── api helpers (fetch interceptor in AuthContext adds the token automatically)
 const api = {
   get: (path) => fetch(path).then(r => r.json()),
@@ -136,6 +136,7 @@ export default function ProcessarArquivos() {
   const [syncing, setSyncing] = useState(false)
   const [results, setResults] = useState(null)
   const [syncResult, setSyncResult] = useState(null)
+  const { alert } = useNotification()
 
   // ── shortcuts ─────────────────────────────────────────────────────────────
   const SHORTCUTS = [
@@ -171,7 +172,7 @@ export default function ProcessarArquivos() {
     )
 
     if (matchingFiles.length === 0) {
-      alert(`Nenhum arquivo pendente encontrado para o padrão: ${s.pattern}`)
+      alert('error', `Nenhum arquivo pendente encontrado para o padrão: ${s.pattern}`)
       return
     }
 
@@ -180,7 +181,7 @@ export default function ProcessarArquivos() {
     )
 
     if (!acc) {
-      alert(`Conta de destino não encontrada: "${s.accountSearch}". Por favor, selecione-a manualmente.`)
+      alert('error', `Conta de destino não encontrada: "${s.accountSearch}". Por favor, selecione-a manualmente.`)
       // Still set the others, let user choose account
       setBank(s.bank)
       setImportType(s.type)

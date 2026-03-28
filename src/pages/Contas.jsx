@@ -3,7 +3,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle, Input, Select, Badge,
 import { Dialog, FormField } from "@/components/Dialog"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { useApi } from "@/lib/useApi"
-import { ArrowLeft, Plus, Pencil, Trash2, Building2, Bitcoin, Wallet, TrendingUp, TrendingDown, AlertTriangle, ArrowUp, ArrowDown, ArrowRight, Banknote } from "lucide-react"
+import { ArrowLeft, Plus, Pencil, Trash2, Building2, Bitcoin, Wallet, TrendingUp, TrendingDown, AlertTriangle, ArrowUp, ArrowDown, ArrowRight, Banknote, ShieldCheck, CheckCircle2, XCircle } from "lucide-react"
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, AreaChart, Area,
@@ -55,6 +55,8 @@ export default function Contas() {
   const [saving, setSaving] = useState(false)
   const [tfOrigin, setTfOrigin] = useState("")
   const [tfDest, setTfDest] = useState("")
+  const [integrityResults, setIntegrityResults] = useState(null)
+  const [verifying, setVerifying] = useState(false)
 
   const load = async () => {
     const [accs, txns] = await Promise.all([
@@ -96,6 +98,16 @@ export default function Contas() {
   const syncAccount = async (id) => {
     await api.post(`/api/accounts/${id}/sync`, {})
     await load()
+  }
+
+  const runIntegrityCheck = async () => {
+    setVerifying(true)
+    try {
+      const res = await api.post("/api/accounts/verify-integrity")
+      setIntegrityResults(res)
+    } finally {
+      setVerifying(false)
+    }
   }
 
   // ── Financial calculations (unchanged) ───────────────────────
@@ -173,7 +185,7 @@ export default function Contas() {
 
     setAccountMap(accountMap)
     return { totalIncome: tIncome, totalExpense: tExpense, totalTransferSent: tTsent, perAccount: accountMap, monthlyData: processedMonthly }
-  }, [transactions])
+  }, [transactions, accounts])
 
   const netResult = totalIncome - totalExpense
 
@@ -234,6 +246,10 @@ export default function Contas() {
             <ArrowDown className="w-3 h-3" /> Acompanhamento
           </Button>
           <div className="w-px h-8 bg-border/60 mx-1" />
+          <Button variant="outline" size="sm" onClick={runIntegrityCheck} disabled={verifying} className="gap-2">
+            <ShieldCheck size={16} className="text-primary" />
+            {verifying ? "Verificando..." : "Verificar Integridade Banco"}
+          </Button>
           <Button onClick={openCreate} size="sm"><Plus size={16} /> Nova Conta</Button>
         </div>
       </div>
@@ -301,8 +317,8 @@ export default function Contas() {
                     </p>
                   </div>
 
-                  <p className="text-2xl font-bold text-foreground amount-value">{formatCurrency(a.balance + stats.transfers)}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">NET {a.currency} (in + transfer_in - out - transfer_out)</p>
+                  <p className="text-2xl font-bold text-foreground amount-value">{formatCurrency(a.total_balance || (a.balance + stats.transfers))}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">NET {a.currency} (Saldo + Transferências)</p>
 
                   {stats.count > 0 && (
                     <div className="mt-3 pt-3 border-t border-border/60">
@@ -772,6 +788,95 @@ export default function Contas() {
         <div className="flex gap-3">
           <Button variant="destructive" className="flex-1" onClick={() => remove(deleting.id)}>Excluir</Button>
           <Button variant="outline" onClick={() => setDeleting(null)}>Cancelar</Button>
+        </div>
+      </Dialog>
+
+      {/* Integrity Check Dialog */}
+      <Dialog open={!!integrityResults} onClose={() => setIntegrityResults(null)} title="Integridade do Banco de Dados" className="max-w-[90%]" size="lg">
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+          <p className="text-sm text-muted-foreground mb-4">
+            Abaixo está a comparação entre os valores armazenados no cadastro da conta (triggers) e o cálculo em tempo real baseado em todas as transações registradas.
+          </p>
+
+          <div className="grid gap-3">
+            {integrityResults?.map(res => (
+              <Card key={res.id} className={`border-l-4 ${res.overall_ok ? 'border-l-success' : 'border-l-destructive'}`}>
+                <CardContent className="py-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2 font-bold">
+                      {res.overall_ok ? <CheckCircle2 className="text-success h-4 w-4" /> : <XCircle className="text-destructive h-4 w-4" />}
+                      {res.name}
+                    </div>
+                    <Badge variant={res.overall_ok ? "success" : "destructive"}>
+                      {res.overall_ok ? "OK" : "Divergente"}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 text-xs">
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground uppercase font-semibold text-[9px]">Saldo (Receitas - Despesas)</p>
+                      <div className="flex justify-between">
+                        <span>Receitas:</span>
+                        <span className="font-mono text-success">{formatCurrency(res.income)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Despesas:</span>
+                        <span className="font-mono text-destructive">{formatCurrency(res.expenses)}</span>
+                      </div>
+                      <div className="flex justify-between border-t border-border/40 pt-1 mt-1">
+                        <span>Esperado:</span>
+                        <span className="font-mono">{formatCurrency(res.expected_balance)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Atual:</span>
+                        <span className="font-mono">{formatCurrency(res.actual_balance)}</span>
+                      </div>
+                      <div className={`text-right font-bold ${res.balance_ok ? 'text-success' : 'text-destructive'}`}>
+                        {res.balance_ok ? "✓ Bate" : `Δ ${formatCurrency(res.actual_balance - res.expected_balance)}`}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground uppercase font-semibold text-[9px]">Total Transferências</p>
+                      <div className="flex justify-between">
+                        <span>Atual:</span>
+                        <span className="font-mono">{formatCurrency(res.actual_transfers)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Esperado:</span>
+                        <span className="font-mono">{formatCurrency(res.expected_transfers)}</span>
+                      </div>
+                      <div className={`text-right font-bold ${res.transfers_ok ? 'text-success' : 'text-destructive'}`}>
+                        {res.transfers_ok ? "✓ Bate" : `Δ ${formatCurrency(res.actual_transfers - res.expected_transfers)}`}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground uppercase font-semibold text-[9px]">Saldo Final (Líquido)</p>
+                      <div className="flex justify-between">
+                        <span>Atual:</span>
+                        <span className="font-mono">{formatCurrency(res.actual_total)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Esperado:</span>
+                        <span className="font-mono">{formatCurrency(res.expected_total)}</span>
+                      </div>
+                      <div className={`text-right font-bold ${res.total_ok ? 'text-success' : 'text-destructive'}`}>
+                        {res.total_ok ? "✓ Bate" : `Δ ${formatCurrency(res.actual_total - res.expected_total)}`}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="pt-4 flex justify-between items-center">
+            <p className="text-[10px] text-muted-foreground italic max-w-[70%]">
+              * O cálculo "Esperado" soma todas as transações de receitas/despesas para o saldo base, e soma separadamente os tipos transfer_in/transfer_out para o total de transferências.
+            </p>
+            <Button onClick={() => setIntegrityResults(null)}>Fechar</Button>
+          </div>
         </div>
       </Dialog>
     </div >

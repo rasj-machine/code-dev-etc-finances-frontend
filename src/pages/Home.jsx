@@ -146,7 +146,7 @@ function AddDbDialog({ onClose, onAdd, currentMode, MODES }) {
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed top-[-20px] left-0 right-0 bottom-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm " onClick={onClose}>
       <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-3">
@@ -515,7 +515,7 @@ function SyncBar({ syncToDisk, autoSaveEnabled, setAutoSave }) {
 // ── Main ───────────────────────────────────────────────────────
 export default function Home() {
   const navigate = useNavigate()
-  const { alert } = useNotification()
+  const { alert, confirm } = useNotification()
   const {
     mode, MODES, currentDb, loading,
     hasFsAccess: fsAccess, switchMode, selectDatabase,
@@ -558,7 +558,7 @@ export default function Home() {
   }
 
   const handleRemove = async (db) => {
-    if (!confirm(`Remover "${db.name}" da lista?`)) return
+    if (!await confirm(`Remover "${db.name}" da lista?`)) return
     if (db.storageType === 'local') {
       removeLocalConfig(db.id)
       refresh()
