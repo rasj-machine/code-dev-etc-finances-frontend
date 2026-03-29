@@ -44,7 +44,7 @@ export const translations = {
       investments: "Investimentos",
       crypto: "Cripto",
       reports: "Relatórios",
-      wealth: "Patrimônio",
+      wealth: "Ativos e Passivos",
       recurring: "Recorrentes",
       pre_transactions: "Pre-Transações",
       expenses_income: "Gastos e Receitas",

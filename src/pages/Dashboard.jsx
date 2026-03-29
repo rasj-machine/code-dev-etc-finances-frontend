@@ -5,7 +5,7 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from "recharts"
-import { TrendingUp, TrendingDown, Wallet, CreditCard, Bitcoin, AlertCircle } from "lucide-react"
+import { TrendingUp, TrendingDown, Wallet, CreditCard, Bitcoin, AlertCircle, Building2, Landmark } from "lucide-react"
 
 const COLORS = ["#38bdf8", "#818cf8", "#fb7185", "#34d399", "#fbbf24", "#a78bfa"]
 
@@ -54,6 +54,7 @@ export default function Dashboard() {
   const [accounts, setAccounts] = useState([])
   const [transactions, setTransactions] = useState([])
   const [investments, setInvestments] = useState([])
+  const [realNetWorth, setRealNetWorth] = useState(0)
 
   // New date filters
   const [mode, setMode] = useState("month") // "month" or "day"
@@ -63,6 +64,13 @@ export default function Dashboard() {
     fetch("/api/accounts").then(r => r.ok ? r.json() : []).then(d => setAccounts(Array.isArray(d) ? d : []))
     fetch("/api/transactions").then(r => r.ok ? r.json() : []).then(d => setTransactions(Array.isArray(d) ? d : []))
     fetch("/api/investments").then(r => r.ok ? r.json() : []).then(d => setInvestments(Array.isArray(d) ? d : []))
+    fetch("/api/patrimony").then(r => r.ok ? r.json() : []).then(items => {
+      const assets = items.filter(i => i.type === "asset")
+      const liabilities = items.filter(i => i.type === "liability")
+      const totalRealValue = assets.reduce((s, i) => s + (i.real_value || 0), 0)
+      const totalDebt = liabilities.reduce((s, i) => s + (i.value || 0), 0)
+      setRealNetWorth(totalRealValue - totalDebt)
+    })
   }, [])
 
   const currentTotalBalance = accounts.reduce((s, a) => s + a.balance, 0)
@@ -217,45 +225,62 @@ export default function Dashboard() {
         const diff = (new Date() - new Date(a.last_import_date)) / (1000 * 60 * 60 * 24)
         return diff > 1
       })) && (
-        <div className="space-y-3">
-          {accounts.filter(a => {
-            if (!a.last_recon_date) return true
-            const diff = (new Date() - new Date(a.last_recon_date)) / (1000 * 60 * 60 * 24)
-            return diff > 7
-          }).map(a => (
-            <div key={`recon-${a.id}`} className="flex items-center gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 animate-in zoom-in-95 duration-300">
-              <AlertCircle size={18} />
-              <div className="flex-1">
-                <p className="text-sm font-bold">Conciliação Pendente: {a.name}</p>
-                <p className="text-[10px] opacity-80">Esta conta não recebe uma conferência manual há mais de 7 dias ({a.last_recon_date ? formatDate(a.last_recon_date) : "Nunca"}).</p>
+          <div className="space-y-3">
+            {accounts.filter(a => {
+              if (!a.last_recon_date) return true
+              const diff = (new Date() - new Date(a.last_recon_date)) / (1000 * 60 * 60 * 24)
+              return diff > 7
+            }).map(a => (
+              <div key={`recon-${a.id}`} className="flex items-center gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 animate-in zoom-in-95 duration-300">
+                <AlertCircle size={18} />
+                <div className="flex-1">
+                  <p className="text-sm font-bold">Conciliação Pendente: {a.name}</p>
+                  <p className="text-[10px] opacity-80">Esta conta não recebe uma conferência manual há mais de 7 dias ({a.last_recon_date ? formatDate(a.last_recon_date) : "Nunca"}).</p>
+                </div>
+                <Button size="sm" variant="ghost" className="h-7 text-amber-600 hover:bg-amber-500/10 text-[10px]" onClick={() => window.location.href = '/conciliacao'}>Conciliar Agora</Button>
               </div>
-              <Button size="sm" variant="ghost" className="h-7 text-amber-600 hover:bg-amber-500/10 text-[10px]" onClick={() => window.location.href='/conciliacao'}>Conciliar Agora</Button>
-            </div>
-          ))}
+            ))}
 
-          {accounts.filter(a => {
-            if (a.type !== "bank") return false
-            if (!a.last_import_date) return true
-            const diff = (new Date() - new Date(a.last_import_date)) / (1000 * 60 * 60 * 24)
-            return diff > 1
-          }).map(a => (
-            <div key={`sync-${a.id}`} className="flex items-center gap-3 p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive animate-in zoom-in-95 duration-300">
-              <AlertCircle size={18} />
-              <div className="flex-1">
-                <p className="text-sm font-bold">Sincronização Atrasada: {a.name}</p>
-                <p className="text-[10px] opacity-80">Nenhum extrato bancário foi importado para esta conta nas últimas 24 horas.</p>
+            {accounts.filter(a => {
+              if (a.type !== "bank") return false
+              if (!a.last_import_date) return true
+              const diff = (new Date() - new Date(a.last_import_date)) / (1000 * 60 * 60 * 24)
+              return diff > 1
+            }).map(a => (
+              <div key={`sync-${a.id}`} className="flex items-center gap-3 p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive animate-in zoom-in-95 duration-300">
+                <AlertCircle size={18} />
+                <div className="flex-1">
+                  <p className="text-sm font-bold">Sincronização Atrasada: {a.name}</p>
+                  <p className="text-[10px] opacity-80">Nenhum extrato bancário foi importado para esta conta nas últimas 24 horas.</p>
+                </div>
+                <Button size="sm" variant="ghost" className="h-7 text-destructive hover:bg-destructive/10 text-[10px]" onClick={() => window.location.href = '/transacoes'}>Importar Extrato</Button>
               </div>
-              <Button size="sm" variant="ghost" className="h-7 text-destructive hover:bg-destructive/10 text-[10px]" onClick={() => window.location.href='/transacoes'}>Importar Extrato</Button>
-            </div>
-          ))}
+            ))}
+          </div>
+        )}
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="lg:col-span-1">
+          <KpiCard title={`Saldo Bancário (${mode === 'month' ? 'fim do mês' : 'o dia'})`} value={formatCurrency(balanceAtPeriod)} change={balanceChange} icon={Wallet} />
         </div>
-      )}
+        <div className="lg:col-span-1">
+          <KpiCard title="Patrimônio Real" value={formatCurrency(realNetWorth)} change={undefined} icon={Building2} />
+        </div>
+        <div className="lg:col-span-1 border border-primary/40 bg-primary/5 rounded-xl scale-[1.02]">
+          <KpiCard title="Total BRUTO (Saldos + Patrimônio)" value={formatCurrency(balanceAtPeriod + realNetWorth)} change={undefined} icon={Landmark} />
+        </div>
+        <div className="lg:col-span-1">
+          <KpiCard title={`Gastos (${mode === 'month' ? 'no mês' : 'no dia'})`} value={formatCurrency(periodExp)} change={expenseChange} icon={CreditCard} />
+        </div>
+      </div>
 
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard title={`Saldo (até ${mode === 'month' ? 'fim do mês' : 'o dia'})`} value={formatCurrency(balanceAtPeriod)} change={balanceChange} icon={Wallet} />
-        <KpiCard title={`Gastos (${mode === 'month' ? 'no mês' : 'no dia'})`} value={formatCurrency(periodExp)} change={expenseChange} icon={CreditCard} />
-        <KpiCard title="Investimentos (atual)" value={formatCurrency(totalCurrentValue)} change={undefined} icon={TrendingUp} />
-        <KpiCard title="Crypto (atual)" value={formatCurrency(totalCrypto)} change={undefined} icon={Bitcoin} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="lg:col-span-2">
+          <KpiCard title="Investimentos (atual)" value={formatCurrency(totalCurrentValue)} change={undefined} icon={TrendingUp} />
+        </div>
+        <div className="lg:col-span-2">
+          <KpiCard title="Crypto (atual)" value={formatCurrency(totalCrypto)} change={undefined} icon={Bitcoin} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

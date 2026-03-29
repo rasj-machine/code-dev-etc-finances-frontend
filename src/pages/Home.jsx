@@ -384,11 +384,26 @@ function DbCard({ db, mode, MODES, onSelect, onOpen, onRemove, hidden }) {
           </div>
         ) : hasStats && (
           <>
-            {/* Balance */}
-            <div className="cursor-pointer" onClick={handleClick}>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-0.5">Saldo Total</p>
-              <p className={`text-2xl font-bold tabular-nums leading-none amount-value ${positive ? "text-success" : "text-destructive"}`}>
-                <BlurValue hidden={hidden}>{formatCurrency(balance)}</BlurValue>
+            {/* Balance & Wealth */}
+            <div className="grid grid-cols-2 gap-4 cursor-pointer" onClick={handleClick}>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-0.5">Saldo Total</p>
+                <p className={`text-lg font-bold tabular-nums leading-none amount-value ${positive ? "text-success" : "text-destructive"}`}>
+                  <BlurValue hidden={hidden}>{formatCurrency(balance)}</BlurValue>
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-0.5">Patrimônio Real</p>
+                <p className={`text-lg font-bold tabular-nums leading-none amount-value ${(db.real_net_worth || 0) >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                  <BlurValue hidden={hidden}>{formatCurrency(db.real_net_worth || 0)}</BlurValue>
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-1 cursor-pointer" onClick={handleClick}>
+              <p className="text-[10px] uppercase tracking-wider text-primary font-bold mb-0.5">Total BRUTO (Saldos + Patr.)</p>
+              <p className={`text-2xl font-black tabular-nums leading-none amount-value ${(db.total_wealth || 0) >= 0 ? "text-primary" : "text-destructive"}`}>
+                <BlurValue hidden={hidden}>{formatCurrency(db.total_wealth || 0)}</BlurValue>
               </p>
             </div>
 
@@ -396,13 +411,13 @@ function DbCard({ db, mode, MODES, onSelect, onOpen, onRemove, hidden }) {
             <div className="flex gap-3 flex-wrap text-[10px]">
               <div className="flex items-center gap-1">
                 <TrendingUp size={10} className="text-emerald-500" />
-                <span className="text-muted-foreground">Entradas mês</span>
-                <span className="text-emerald-500 font-semibold font-mono"><BlurValue hidden={hidden}>{formatCurrency(db.month_income || 0)}</BlurValue></span>
+                <span className="text-muted-foreground font-medium">Entradas mês</span>
+                <span className="text-emerald-500 font-bold font-mono"><BlurValue hidden={hidden}>{formatCurrency(db.month_income || 0)}</BlurValue></span>
               </div>
               <div className="flex items-center gap-1">
                 <TrendingDown size={10} className="text-rose-500" />
-                <span className="text-muted-foreground">Saídas mês</span>
-                <span className="text-rose-500 font-semibold font-mono"><BlurValue hidden={hidden}>{formatCurrency(db.month_expense || 0)}</BlurValue></span>
+                <span className="text-muted-foreground font-medium">Saídas mês</span>
+                <span className="text-rose-500 font-bold font-mono"><BlurValue hidden={hidden}>{formatCurrency(db.month_expense || 0)}</BlurValue></span>
               </div>
             </div>
 
@@ -740,7 +755,7 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredDbs.map((db, i) => (
+            {filteredDbs.map((db) => (
               <DbCard
                 key={db.id}
                 db={db}

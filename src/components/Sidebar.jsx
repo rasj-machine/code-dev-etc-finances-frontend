@@ -242,7 +242,7 @@ export default function Sidebar() {
         <div className="border-t border-border/40" />
 
         {/* Patrimônio & Investimentos */}
-        <NavGroup label="Patrimônio">
+        <NavGroup label="Mercado">
           <NavItem to="/patrimonio" icon={Building2} label={t('sidebar.wealth')} />
           <NavItem to="/investimentos" icon={TrendingUp} label={t('sidebar.investments')} />
           <NavItem to="/crypto" icon={Bitcoin} label={t('sidebar.crypto')} />

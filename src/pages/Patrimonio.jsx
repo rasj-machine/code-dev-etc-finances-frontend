@@ -67,8 +67,8 @@ export default function Patrimonio() {
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
   const [form, setForm]       = useState(emptyForm)
-  // today snapshot — stable reference, avoids calling Date.now() during render
-  const todayMs = useMemo(() => Date.now(), [])
+  // today snapshot — stable reference
+  const [todayMs] = useState(() => Date.now())
 
   const load = () =>
     fetch("/api/patrimony").then(r => r.ok ? r.json() : []).then(d => setItems(Array.isArray(d) ? d : []))
@@ -134,8 +134,8 @@ export default function Patrimonio() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Patrimônio</h1>
-          <p className="text-muted-foreground text-sm mt-1">{items.length} itens · ativos e passivos</p>
+          <h1 className="text-2xl font-bold">Ativos e Passivos</h1>
+          <p className="text-muted-foreground text-sm mt-1">{items.length} itens · resumo operacional</p>
         </div>
         <Button onClick={openCreate}><Plus size={16}/> Novo Item</Button>
       </div>
