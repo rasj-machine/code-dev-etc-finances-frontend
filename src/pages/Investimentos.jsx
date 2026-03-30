@@ -5,10 +5,10 @@ import { NumericFormat } from "react-number-format"
 import { formatCurrency } from "@/lib/utils"
 import {
   Plus, Pencil, Trash2, TrendingUp, TrendingDown, Search,
-  RefreshCw, BarChart2, Briefcase, AlertTriangle, CheckCircle,
+  RefreshCw, BarChart2, Briefcase, AlertTriangle, X,
   Minus, Calendar, Clock, ChevronDown, ChevronUp, Info, Zap,
   DollarSign, LineChart, PieChart, ArrowRight, Landmark, Coins,
-  Building2, Shield, Rocket
+  Building2, Shield, Rocket, ExternalLink, Activity, Globe
 } from "lucide-react"
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -222,6 +222,29 @@ export default function Investimentos() {
   const [sortKey, setSortKey] = useState("net_desc")
   const [expandedInsight, setExpandedInsight] = useState(null)
 
+  // Detail modal state
+  const [detailInv, setDetailInv] = useState(null)
+  const [detailTimeseries, setDetailTimeseries] = useState([])
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  const openDetail = useCallback(async (inv) => {
+    setDetailInv(inv)
+    setDetailTimeseries([])
+    const sym = (inv.ticker || inv.name || '').toUpperCase()
+    if (inv.type === 'crypto' && sym) {
+      setDetailLoading(true)
+      const brl = await fetch(`/api/market-data/timeseries/crypto_${sym}_brl?limit=120`).then(r => r.ok ? r.json() : [])
+      const usd = await fetch(`/api/market-data/timeseries/crypto_${sym}_usd?limit=120`).then(r => r.ok ? r.json() : [])
+      setDetailTimeseries({ brl, usd })
+      setDetailLoading(false)
+    } else if ((inv.type === 'stock' || inv.type === 'reit') && sym) {
+      setDetailLoading(true)
+      const ts = await fetch(`/api/market-data/timeseries/stock_${sym}?limit=120`).then(r => r.ok ? r.json() : [])
+      setDetailTimeseries({ brl: ts })
+      setDetailLoading(false)
+    }
+  }, [])
+
   // ── Loaders ────────────────────────────────────────────────────────────────
   const loadInvestments = useCallback(async () => {
     setLoading(true)
@@ -265,15 +288,34 @@ export default function Investimentos() {
   const enriched = useMemo(() => investments.map(inv => {
     // principal = original investment (valor aplicado)
     const principal = inv.applied || (inv.purchase_price * (inv.quantity || 1))
-    // current net value = what you'd receive today (after IR/IOF)
-    const currentNet = inv.net_value || inv.current_price * (inv.quantity || 1) || principal
-    // gain = net withdrawal minus original principal
+
+    // For crypto: calculate USD value × quantity, convert to BRL via usd_brl rate
+    let currentNet = inv.net_value || inv.current_price * (inv.quantity || 1) || principal
+    let cryptoUsdValue = null
+    let cryptoUsdPrice = null
+    if (inv.type === 'crypto') {
+      const sym = (inv.ticker || inv.name || '').toUpperCase()
+      const cryptoInfo = marketData?.crypto?.[sym]
+      if (cryptoInfo?.price_usd != null && inv.quantity) {
+        cryptoUsdPrice = cryptoInfo.price_usd
+        cryptoUsdValue = cryptoInfo.price_usd * inv.quantity
+        const usdBrl = marketData?.usd || 5.0
+        currentNet = Math.round(cryptoUsdValue * usdBrl * 100) // centavos
+      } else if (cryptoInfo?.price_brl != null && inv.quantity) {
+        currentNet = Math.round(cryptoInfo.price_brl * inv.quantity * 100)
+      }
+    }
+
     const gain    = currentNet - principal
     const gainPct = principal > 0 ? (gain / principal) * 100 : 0
     const days = daysLeft(inv.maturity_date)
     const insight = insights.find(i => i.id === inv.id)
-    return { ...inv, principal, currentVal: currentNet, investedVal: principal, gain, gainPct, daysLeft: days, insight }
-  }), [investments, insights])
+    return {
+      ...inv, principal, currentVal: currentNet, investedVal: principal,
+      gain, gainPct, daysLeft: days, insight,
+      cryptoUsdValue, cryptoUsdPrice,
+    }
+  }), [investments, insights, marketData])
 
   // ── Filtered list ──────────────────────────────────────────────────────────
   const visible = useMemo(() => {
@@ -568,7 +610,11 @@ export default function Investimentos() {
                 const isGain = inv.gain >= 0
                 const days = inv.daysLeft
                 return (
-                  <Card key={inv.id} className="hover:-translate-y-0.5 transition-transform duration-200 group">
+                  <Card
+                    key={inv.id}
+                    className="hover:-translate-y-0.5 transition-transform duration-200 group cursor-pointer"
+                    onClick={() => openDetail(inv)}
+                  >
                     <CardContent className="pt-5 pb-4">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3 min-w-0">
@@ -593,6 +639,12 @@ export default function Investimentos() {
                           <span className="text-muted-foreground">Aplicado</span>
                           <span className="tabular-nums amount-value">{formatCurrency(inv.investedVal)}</span>
                         </div>
+                        {inv.type === 'crypto' && inv.cryptoUsdValue != null && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground flex items-center gap-1"><Globe size={9} /> Valor USD</span>
+                            <span className="tabular-nums font-mono text-blue-400">${inv.cryptoUsdValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        )}
                         {inv.gross_value > 0 && (
                           <div className="flex justify-between text-xs">
                             <span className="text-muted-foreground">Bruto atual</span>
@@ -667,7 +719,7 @@ export default function Investimentos() {
                       )}
 
                       {/* Actions */}
-                      <div className="flex gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                         <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => openEdit(inv)}>
                           <Pencil size={11} /> Editar
                         </Button>
@@ -1151,6 +1203,173 @@ export default function Investimentos() {
           <Button variant="outline" onClick={() => setDeleting(null)}>Cancelar</Button>
         </div>
       </Dialog>
+
+      {/* ══ Detail Modal ══════════════════════════════════════════════════════ */}
+      {detailInv && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setDetailInv(null)}
+        >
+          <div
+            className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between p-6 border-b border-border">
+              <div className="flex items-center gap-3">
+                <TypeIcon type={detailInv.type} size={20} />
+                <div>
+                  <h2 className="text-lg font-bold">{detailInv.name}</h2>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-muted-foreground">{TYPE_MAP[detailInv.type]?.label}</span>
+                    {detailInv.ticker && <span className="text-xs font-mono text-muted-foreground">· {detailInv.ticker}</span>}
+                    {detailInv.institution && <span className="text-xs text-muted-foreground">· {detailInv.institution}</span>}
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setDetailInv(null)} className="p-1.5 hover:bg-accent rounded-lg transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* KPI row */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { label: "Aplicado", value: formatCurrency(detailInv.investedVal), color: "" },
+                  { label: "Valor Atual", value: formatCurrency(detailInv.currentVal), color: "" },
+                  {
+                    label: "Ganho/Perda",
+                    value: `${detailInv.gain >= 0 ? "+" : ""}${formatCurrency(detailInv.gain)}`,
+                    color: detailInv.gain >= 0 ? "text-emerald-500" : "text-red-500"
+                  },
+                  {
+                    label: "Rentabilidade",
+                    value: fmtPct(detailInv.gainPct),
+                    color: detailInv.gainPct >= 0 ? "text-emerald-500" : "text-red-500"
+                  },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="rounded-xl bg-accent/30 p-3">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
+                    <p className={`text-base font-bold tabular-nums amount-value ${color}`}>{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Crypto specific: USD breakdown */}
+              {detailInv.type === 'crypto' && (
+                <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 space-y-2">
+                  <p className="text-xs font-semibold text-blue-400 flex items-center gap-1.5 mb-3">
+                    <Globe size={12} /> Exposição em Dólar
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: "Preço atual (USD)", value: detailInv.cryptoUsdPrice != null ? `$${detailInv.cryptoUsdPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}` : "—" },
+                      { label: "Qtd × preço (USD)", value: detailInv.cryptoUsdValue != null ? `$${detailInv.cryptoUsdValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—" },
+                      { label: "USD/BRL (last bid)", value: marketData?.usd ? `R$ ${marketData.usd.toFixed(4)}` : "—" },
+                      { label: "Saldo líquido (BRL)", value: formatCurrency(detailInv.currentVal), color: "text-emerald-500" },
+                    ].map(({ label, value, color }) => (
+                      <div key={label}>
+                        <p className="text-[10px] text-muted-foreground">{label}</p>
+                        <p className={`text-sm font-semibold tabular-nums ${color || ""}`}>{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Metadata */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {detailInv.quantity > 0 && <div><span className="text-muted-foreground">Quantidade: </span><span className="font-medium">{detailInv.quantity}</span></div>}
+                {detailInv.indexer && <div><span className="text-muted-foreground">Indexador: </span><span className="font-medium">{detailInv.indexer}{detailInv.rate > 0 ? ` ${detailInv.rate}%` : ""}</span></div>}
+                {detailInv.application_date && <div><span className="text-muted-foreground">Aplicado em: </span><span className="font-medium">{formatDateShort(detailInv.application_date)}</span></div>}
+                {detailInv.maturity_date && <div><span className="text-muted-foreground">Vencimento: </span><span className="font-medium">{formatDateShort(detailInv.maturity_date)}{detailInv.daysLeft !== null ? ` (${detailInv.daysLeft}d)` : ""}</span></div>}
+                {detailInv.redemption_term && <div><span className="text-muted-foreground">Liquidez: </span><span className="font-medium">{detailInv.redemption_term}</span></div>}
+              </div>
+
+              {/* Chart section */}
+              {(detailInv.type === 'crypto' || detailInv.type === 'stock' || detailInv.type === 'reit') && (
+                <div>
+                  <p className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Activity size={14} /> Histórico de Preço (consultas registradas)
+                  </p>
+                  {detailLoading ? (
+                    <div className="h-32 bg-accent/30 rounded-xl animate-pulse" />
+                  ) : detailTimeseries?.brl?.length >= 2 ? (
+                    <InlineChart data={detailTimeseries.brl} label="BRL" color="#10b981" />
+                  ) : (
+                    <div className="rounded-xl border border-border p-6 text-center text-muted-foreground text-sm">
+                      <Activity size={24} className="mx-auto mb-2 opacity-30" />
+                      Sem histórico local. Clique em "Atualizar" na página de Investimentos para começar a registrar.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Notes */}
+              {detailInv.notes && (
+                <div className="rounded-lg bg-accent/30 p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Observações</p>
+                  <p className="text-sm">{detailInv.notes}</p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                <Button className="flex-1" onClick={() => { setDetailInv(null); openEdit(detailInv) }}>
+                  <Pencil size={14} /> Editar
+                </Button>
+                <Button variant="outline" onClick={() => setDetailInv(null)}>Fechar</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+
+// ── Inline mini chart for detail modal ───────────────────────────────────────
+function InlineChart({ data, label, color = "#10b981" }) {
+  if (!data || data.length < 2) return null
+  const W = 600, H = 120, PAD = { t: 8, r: 8, b: 24, l: 52 }
+  const vals = data.map(d => d.value).filter(v => v != null)
+  const minV = Math.min(...vals), maxV = Math.max(...vals)
+  const rangeV = maxV - minV || 1
+  const pts = data.map((d, i) => ({
+    x: PAD.l + (i / (data.length - 1)) * (W - PAD.l - PAD.r),
+    y: PAD.t + (1 - (d.value - minV) / rangeV) * (H - PAD.t - PAD.b),
+    ...d,
+  }))
+  const pathD = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ")
+  const areaD = `${pathD} L ${pts[pts.length-1].x.toFixed(1)} ${H - PAD.b} L ${pts[0].x.toFixed(1)} ${H - PAD.b} Z`
+  const ySteps = 3
+  const yLabels = Array.from({ length: ySteps + 1 }, (_, i) => ({
+    val: minV + (i / ySteps) * rangeV,
+    y: H - PAD.b - (i / ySteps) * (H - PAD.t - PAD.b)
+  }))
+  return (
+    <div className="rounded-xl border border-border p-3 bg-background overflow-x-auto">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground">{data.length} pontos</p>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 280 }}>
+        <defs>
+          <linearGradient id={`cg_${label}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+            <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {yLabels.map(({ y }, i) => <line key={i} x1={PAD.l} y1={y} x2={W - PAD.r} y2={y} stroke="var(--border)" strokeWidth="0.5" />)}
+        <path d={areaD} fill={`url(#cg_${label})`} />
+        <path d={pathD} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+        {pts.filter(p => p.changed).map((p, i) => <circle key={i} cx={p.x} cy={p.y} r="2.5" fill={color} opacity="0.8" />)}
+        {yLabels.map(({ val, y }, i) => (
+          <text key={i} x={PAD.l - 4} y={y + 3} fontSize="8" fill="var(--muted-foreground)" textAnchor="end">{val.toFixed(2)}</text>
+        ))}
+      </svg>
+    </div>
+  )
+}
+

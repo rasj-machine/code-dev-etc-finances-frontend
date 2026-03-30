@@ -8,7 +8,6 @@ import {
   CreditCard,
   ArrowLeftRight,
   TrendingUp,
-  Bitcoin,
   Wallet,
   Link2,
   BarChart2,
@@ -34,6 +33,10 @@ import {
   FileText,
   GitMerge,
   FolderOpen,
+  Lightbulb,
+  ExternalLink,
+  Activity,
+  Shield,
 } from "lucide-react"
 
 function DbSelector() {
@@ -138,7 +141,7 @@ function NavGroup({ label, children, defaultOpen = true }) {
   )
 }
 
-function NavItem({ to, icon: Icon, label, end }) {
+function NavItem({ to, icon: Icon, label, end }) { // eslint-disable-line no-unused-vars
   return (
     <NavLink
       to={to}
@@ -155,6 +158,39 @@ function NavItem({ to, icon: Icon, label, end }) {
       <Icon size={15} />
       <span className="truncate">{label}</span>
     </NavLink>
+  )
+}
+
+// ── External tool links ────────────────────────────────────────────────────────
+const DICAS = [
+  { label: "Tesouro Direto",       url: "https://www.tesourodireto.com.br",                desc: "Títulos públicos federais" },
+  { label: "Status Invest",        url: "https://statusinvest.com.br",                    desc: "Fundos, ações, FIIs" },
+  { label: "Fundamentus",          url: "https://fundamentus.com.br",                     desc: "Análise fundamentalista" },
+  { label: "Comparação CDB/LCI",   url: "https://calculadora.cidadaofiscal.com.br",       desc: "Simulação renda fixa" },
+  { label: "Banco Central – SGS",  url: "https://www3.bcb.gov.br/sgspub",                desc: "Séries de indicadores" },
+  { label: "CoinGecko",            url: "https://www.coingecko.com/pt",                   desc: "Preços e dados cripto" },
+  { label: "FundExplorer",         url: "https://www.fundsexplorer.com.br",               desc: "Análise de FIIs" },
+  { label: "Suno Research",        url: "https://suno.com.br",                            desc: "Relatórios de investimentos" },
+  { label: "Calculadora IPCA",     url: "https://calculadordojuros.com.br",               desc: "Correção monetária" },
+  { label: "IR – Carnê-Leão",     url: "https://carne-leao.receita.fazenda.gov.br",      desc: "Imposto de renda" },
+]
+
+function DicasMenu() {
+  return (
+    <div className="space-y-0.5">
+      {DICAS.map(d => (
+        <a
+          key={d.url}
+          href={d.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors group"
+        >
+          <ExternalLink size={11} className="shrink-0 opacity-60 group-hover:opacity-100" />
+          <span className="truncate">{d.label}</span>
+        </a>
+      ))}
+    </div>
   )
 }
 
@@ -245,7 +281,6 @@ export default function Sidebar() {
         <NavGroup label="Mercado">
           <NavItem to="/patrimonio" icon={Building2} label={t('sidebar.wealth')} />
           <NavItem to="/investimentos" icon={TrendingUp} label={t('sidebar.investments')} />
-          <NavItem to="/crypto" icon={Bitcoin} label={t('sidebar.crypto')} />
         </NavGroup>
 
         <div className="border-t border-border/40" />
@@ -254,6 +289,7 @@ export default function Sidebar() {
         <NavGroup label="Análise">
           <NavItem to="/gastos-receitas" icon={LayoutList} label={t('sidebar.expenses_income')} />
           <NavItem to="/relatorios" icon={BarChart2} label={t('sidebar.reports')} />
+          <NavItem to="/relatorios-mercado" icon={Activity} label="Dados de Mercado" />
           <NavItem to="/unificado" icon={Zap} label={t('sidebar.unified')} />
         </NavGroup>
 
@@ -277,8 +313,15 @@ export default function Sidebar() {
 
         {/* Sistema */}
         <NavGroup label="Sistema" defaultOpen={false}>
-
           <NavItem to="/configuracoes" icon={Settings} label={t('sidebar.settings')} />
+          <NavItem to="/auditoria" icon={Shield} label="Auditoria" />
+        </NavGroup>
+
+        <div className="border-t border-border/40" />
+
+        {/* Dicas */}
+        <NavGroup label="Dicas" defaultOpen={false}>
+          <DicasMenu />
         </NavGroup>
 
       </nav>

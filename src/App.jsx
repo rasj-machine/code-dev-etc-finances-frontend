@@ -26,6 +26,8 @@ import AuthShell from "@/pages/AuthShell"
 import OrgSetupPage from "@/pages/OrgSetupPage"
 import ProfilePage from "@/pages/ProfilePage"
 import ProcessarArquivos from "@/pages/ProcessarArquivos"
+import RelatoriosMercado from "@/pages/RelatoriosMercado"
+import Auditoria from "@/pages/Auditoria"
 import { AuthProvider, useAuth } from "@/context/AuthContext"
 import OrgUserInfo from "@/components/OrgUserInfo"
 import { PrivacyProvider, usePrivacy } from "@/context/PrivacyContext"
@@ -221,6 +223,8 @@ function AppInner() {
                 <Route path="/ai" element={<AiChat />} />
                 <Route path="/perfil" element={<ProfilePage />} />
                 <Route path="/processar-arquivos" element={<ProcessarArquivos />} />
+                <Route path="/relatorios-mercado" element={<RelatoriosMercado />} />
+                <Route path="/auditoria" element={<Auditoria />} />
               </Routes>
             </main>
           </div>
