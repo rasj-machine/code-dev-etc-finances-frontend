@@ -120,6 +120,7 @@ function AddDbDialog({ onClose, onAdd, currentMode, MODES }) {
   const [name, setName] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [dbPath, setDbPath] = useState('')
+  const [engine, setEngine] = useState('postgres')
   const [saveLocal, setSaveLocal] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -128,7 +129,7 @@ function AddDbDialog({ onClose, onAdd, currentMode, MODES }) {
     if (!name.trim()) return
     setLoading(true)
     try {
-      await onAdd({ type, name: name.trim(), baseUrl: baseUrl.trim(), dbPath: dbPath.trim(), saveLocal })
+      await onAdd({ type, name: name.trim(), baseUrl: baseUrl.trim(), dbPath: dbPath.trim(), saveLocal, engine })
       onClose()
     } finally {
       setLoading(false)
@@ -201,10 +202,33 @@ function AddDbDialog({ onClose, onAdd, currentMode, MODES }) {
           {/* DB file path (optional for api type) */}
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">
-              Arquivo .db {type === 'api' ? '(opcional — deixe vazio para usar o padrão)' : ''}
+              DB Path ou Identificador {type === 'api' ? '(opcional)' : ''}
             </label>
-            <Input value={dbPath} onChange={e => setDbPath(e.target.value)} placeholder="finance.db ou /caminho/absoluto/banco.db" className="text-sm font-mono" />
+            <Input value={dbPath} onChange={e => setDbPath(e.target.value)} placeholder="Opcional. Ex: meubanco.db ou dsn postgres" className="text-sm font-mono" />
           </div>
+
+          {/* Engine selector for API type */}
+          {type === 'api' && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Motor de Banco de Dados</label>
+              <div className="flex bg-accent/30 p-1 rounded-lg border border-border/50">
+                <button
+                  type="button"
+                  onClick={() => setEngine('postgres')}
+                  className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${engine === 'postgres' ? 'bg-primary/20 text-primary border border-primary/30 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  PostgreSQL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEngine('sqlite')}
+                  className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${engine === 'sqlite' ? 'bg-primary/20 text-primary border border-primary/30 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  SQLite
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Storage toggle */}
           <div className="rounded-xl border border-border p-3 space-y-2">
@@ -589,7 +613,7 @@ export default function Home() {
     alert("info", `"${db.name}" removido.`)
   }
 
-  const handleAdd = async ({ type, name, baseUrl, dbPath, saveLocal }) => {
+  const handleAdd = async ({ type, name, baseUrl, dbPath, saveLocal, engine }) => {
     const config = {
       name,
       type,
@@ -603,10 +627,10 @@ export default function Home() {
       alert("success", `"${name}" salvo no Local Storage.`)
     } else {
       // Save in cloud API
-      const body = { name, type, base_url: baseUrl, db_path: dbPath, filename: dbPath ? dbPath.split('/').pop() : '' }
+      const body = { name, type, base_url: baseUrl, db_path: dbPath, filename: dbPath ? dbPath.split('/').pop() : '', engine }
       if (type === 'api' && !dbPath) {
         // Also create the physical DB on the server
-        await createDatabase(name)
+        await createDatabase(name, engine)
         await refresh()
       } else {
         await fetch('/api/db-configs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })

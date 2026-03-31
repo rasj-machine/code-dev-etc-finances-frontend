@@ -218,11 +218,11 @@ export function DatabaseProvider({ children }) {
   }, [mode, selectBrowserDatabase, selectFlaskDatabase])
 
   // ── Flask: create database ────────────────────────────────────
-  const createFlaskDatabase = useCallback(async (name) => {
+  const createFlaskDatabase = useCallback(async (name, engine = 'postgres') => {
     const r = await fetch('/api/databases', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, engine }),
     })
     const data = await r.json()
     if (r.ok) await loadFlaskDatabases()
@@ -274,9 +274,9 @@ export function DatabaseProvider({ children }) {
     return { ok: true, data: { name: key, opfsPath } }
   }, [loadBrowserDatabases])
 
-  const createDatabase = useCallback(async (name) => {
+  const createDatabase = useCallback(async (name, engine) => {
     if (mode === MODES.BROWSER) return createBrowserDatabase()
-    return createFlaskDatabase(name)
+    return createFlaskDatabase(name, engine)
   }, [mode, createBrowserDatabase, createFlaskDatabase])
 
   // ── Remove a browser database ─────────────────────────────────

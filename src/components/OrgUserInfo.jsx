@@ -126,7 +126,7 @@ export default function OrgUserInfo() {
             )}
 
             {/* Org switcher */}
-            {!isGuest && orgs.length > 1 && (
+            {!isGuest && orgs.length > 0 && (
               <div className="border-t border-border/50 mt-1 pt-1">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1">Trocar Organização</p>
                 {orgs.map(o => (

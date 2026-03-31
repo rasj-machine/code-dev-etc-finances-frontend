@@ -15,12 +15,14 @@ const ROLE_COLORS = { owner: 'text-primary', admin: 'text-violet-500', member: '
 
 export default function OrgSetupPage() {
   const { user, orgs, createOrg, switchOrg, logout } = useAuth()
-  const [view,       setView]      = useState(orgs.length ? 'list' : 'create') // 'list' | 'create'
-  const [orgName,    setOrgName]   = useState('')
-  const [require2fa, setRequire2fa]= useState(true)
-  const [loading,    setLoading]   = useState(false)
-  const [switching,  setSwitching] = useState(null)
-  const [error,      setError]     = useState(null)
+  const [userView, setUserView] = useState(null)
+  const view = userView || (orgs.length > 0 ? 'list' : 'create')
+
+  const [orgName, setOrgName] = useState('')
+  const [require2fa, setRequire2fa] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [switching, setSwitching] = useState(null)
+  const [error, setError] = useState(null)
 
   const handleCreate = async (e) => {
     e.preventDefault()
@@ -60,7 +62,7 @@ export default function OrgSetupPage() {
           {orgs.length > 0 && (
             <div className="flex border-b border-border">
               {[['list', 'Minhas Organizações'], ['create', 'Nova Organização']].map(([id, label]) => (
-                <button key={id} onClick={() => setView(id)}
+                <button key={id} onClick={() => setUserView(id)}
                   className={`flex-1 py-3.5 text-sm font-semibold transition-colors
                     ${view === id ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'}`}>
                   {label}
@@ -103,7 +105,7 @@ export default function OrgSetupPage() {
                     }
                   </button>
                 ))}
-                <button onClick={() => setView('create')}
+                <button onClick={() => setUserView('create')}
                   className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-border hover:border-primary/50 hover:text-primary text-muted-foreground text-sm transition-all mt-2">
                   <Plus size={14} /> Nova organização
                 </button>
@@ -126,7 +128,7 @@ export default function OrgSetupPage() {
                 {/* 2FA requirement */}
                 {(() => {
                   const userHas2fa = !!user?.totp_enabled
-                  const blocked    = require2fa && !userHas2fa
+                  const blocked = require2fa && !userHas2fa
                   return (
                     <>
                       <label className={`flex items-start gap-3 p-4 rounded-xl border transition-all
